@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 
 import logging
 
-import fiona
 from shapely.geometry import mapping, shape
+import fiona
 
 from .main import Centerline
 from .utils import get_ogr_driver, is_valid_geometry
