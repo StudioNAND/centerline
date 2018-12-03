@@ -37,47 +37,46 @@ def create_centerlines(src, dst, density=0.5):
     except ValueError:
         raise
 
-    with fiona.drivers():
-        with fiona.open(path=src, mode='r') as source:
-            SCHEMA = source.schema.copy()
-            SCHEMA.update({'geometry': 'MultiLineString'})
-            with fiona.open(
-                    path=dst,
-                    mode='w',
-                    driver=DST_DRIVER.GetName(),
-                    schema=SCHEMA,
-                    crs=source.crs,
-                    encoding=source.encoding) as destination:
-                for record in source:
-                    geom = record.get('geometry')
-                    input_geom = shape(geom)
+    with fiona.Env(), fiona.open(src, mode='r') as source:
+        SCHEMA = source.schema.copy()
+        SCHEMA.update({'geometry': 'MultiLineString'})
+        with fiona.open(
+                dst,
+                mode='w',
+                driver=DST_DRIVER.GetName(),
+                schema=SCHEMA,
+                crs=source.crs,
+                encoding=source.encoding) as destination:
+            for record in source:
+                geom = record.get('geometry')
+                input_geom = shape(geom)
 
-                    if not is_valid_geometry(geometry=input_geom):
-                        continue
+                if not is_valid_geometry(geometry=input_geom):
+                    continue
 
-                    attributes = record.get('properties')
-                    try:
-                        centerline_obj = Centerline(
-                            input_geom=input_geom,
-                            interpolation_dist=density,
-                            **attributes
-                        )
-                    except RuntimeError as err:
-                        logging.warning(
-                            "ignoring record that could not be processed: %s",
-                            err
-                        )
-                        continue
+                attributes = record.get('properties')
+                try:
+                    centerline_obj = Centerline(
+                        input_geom=input_geom,
+                        interpolation_dist=density,
+                        **attributes
+                    )
+                except RuntimeError as err:
+                    logging.warning(
+                        "ignoring record that could not be processed: %s",
+                        err
+                    )
+                    continue
 
-                    centerline_dict = {
-                        'geometry': mapping(centerline_obj),
-                        'properties': {
-                            k: v
-                            for k, v in centerline_obj.__dict__.items()
-                            if k in attributes.keys()
-                        }
+                centerline_dict = {
+                    'geometry': mapping(centerline_obj),
+                    'properties': {
+                        k: v
+                        for k, v in centerline_obj.__dict__.items()
+                        if k in attributes.keys()
                     }
+                }
 
-                    destination.write(centerline_dict)
+                destination.write(centerline_dict)
 
     return None
